@@ -1,6 +1,7 @@
 package filesystem
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -549,5 +550,32 @@ func TestService_ListDirectory(t *testing.T) {
 	}
 	if !hasNote1 || !hasNote2 {
 		t.Errorf("Files should contain note1.md and note2.md: %v", listing.Files)
+	}
+}
+
+func TestService_MoveNoteSamePath(t *testing.T) {
+	for _, destination := range []string{"note.md", "./note.md", "folder/../note.md"} {
+		for _, overwrite := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/overwrite=%t", destination, overwrite), func(t *testing.T) {
+				vault := t.TempDir()
+				service := New(vault, nil, nil)
+				path := filepath.Join(vault, "note.md")
+				const content = "---\ntitle: Keep me\n---\nOriginal note\n"
+				if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+					t.Fatal(err)
+				}
+				result := service.MoveNote(types.MoveNoteParams{OldPath: "note.md", NewPath: destination, Overwrite: overwrite})
+				if result.Success {
+					t.Error("moving a note onto itself should fail")
+				}
+				actual, err := os.ReadFile(path)
+				if err != nil {
+					t.Fatalf("source note lost: %v", err)
+				}
+				if string(actual) != content {
+					t.Fatalf("source changed: %q", actual)
+				}
+			})
+		}
 	}
 }

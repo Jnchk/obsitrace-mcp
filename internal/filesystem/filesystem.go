@@ -516,6 +516,16 @@ func (s *Service) MoveNote(params types.MoveNoteParams) types.MoveResult {
 		}
 	}
 
+	// Compare resolved paths so aliases such as ./note.md cannot delete the source.
+	if oldFullPath == newFullPath {
+		return types.MoveResult{
+			Success: false,
+			OldPath: oldPath,
+			NewPath: newPath,
+			Message: "Source and target paths refer to the same note.",
+		}
+	}
+
 	// Read source content
 	content, err := os.ReadFile(oldFullPath)
 	if err != nil {

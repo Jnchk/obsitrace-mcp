@@ -408,6 +408,27 @@ func TestService_WriteNote(t *testing.T) {
 			t.Errorf("Content should contain both original and appended content: %s", note.Content)
 		}
 	})
+
+	t.Run("invalid mode returns error", func(t *testing.T) {
+		tmpDir, svc := setupTestVault(t)
+		defer cleanupTestVault(t, tmpDir)
+
+		err := svc.WriteNote(types.NoteWriteParams{
+			Path:    "invalid-mode.md",
+			Content: "content",
+			Mode:    "merge",
+		})
+		if err == nil {
+			t.Fatal("WriteNote() error = nil, want invalid mode error")
+		}
+		if !strings.Contains(err.Error(), "invalid write mode") {
+			t.Fatalf("WriteNote() error = %q, want invalid write mode", err)
+		}
+
+		if svc.Exists("invalid-mode.md") {
+			t.Fatal("WriteNote() created note for invalid mode")
+		}
+	})
 }
 
 func TestService_PathTraversal(t *testing.T) {

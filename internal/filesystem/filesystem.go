@@ -110,6 +110,9 @@ func (s *Service) WriteNote(params types.NoteWriteParams) error {
 	if mode == "" {
 		mode = "overwrite"
 	}
+	if mode != "overwrite" && mode != "append" && mode != "prepend" {
+		return fmt.Errorf("invalid write mode %q: must be overwrite, append, or prepend", mode)
+	}
 
 	fullPath, err := s.ResolvePath(path)
 	if err != nil {

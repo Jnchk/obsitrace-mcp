@@ -4,7 +4,7 @@ This file provides guidance to AI agents when working with code in this reposito
 
 ## Project Overview
 
-obsidian-mcp is a Model Context Protocol (MCP) server implemented in Go that provides a universal AI bridge for Obsidian vaults. It enables any MCP-compatible AI assistant (Claude, ChatGPT, etc.) to safely read and write notes in Obsidian vaults while preserving YAML frontmatter and enforcing security boundaries.
+obsitrace-mcp is a Model Context Protocol (MCP) server implemented in Go that provides a universal AI bridge for Obsidian vaults. It enables any MCP-compatible AI assistant (Claude, ChatGPT, etc.) to safely read and write notes in Obsidian vaults while preserving YAML frontmatter and enforcing security boundaries.
 
 ## Development Commands
 
@@ -12,7 +12,7 @@ obsidian-mcp is a Model Context Protocol (MCP) server implemented in Go that pro
 
 ```bash
 go build ./...                    # Build all packages
-go build -o obsidian-mcp ./cmd/obsidian-mcp  # Build the binary
+go build -o obsitrace-mcp ./cmd/obsitrace-mcp  # Build the binary
 go test ./...                     # Run all tests
 go test -v ./internal/filesystem  # Run specific package tests with verbose output
 go test -run TestService_Patch ./internal/filesystem  # Run specific test
@@ -21,8 +21,8 @@ go test -run TestService_Patch ./internal/filesystem  # Run specific test
 ### Running Locally
 
 ```bash
-go run ./cmd/obsidian-mcp /path/to/vault  # Run directly
-./obsidian-mcp /path/to/vault             # Run compiled binary
+go run ./cmd/obsitrace-mcp /path/to/vault  # Run directly
+./obsitrace-mcp /path/to/vault             # Run compiled binary
 ```
 
 ### Code Quality
@@ -35,7 +35,7 @@ go vet ./...     # Check for issues
 ### Build with Version
 
 ```bash
-go build -ldflags "-X main.Version=1.0.0" -o obsidian-mcp ./cmd/obsidian-mcp
+go build -ldflags "-X main.Version=1.0.0" -o obsitrace-mcp ./cmd/obsitrace-mcp
 ```
 
 ## Architecture
@@ -43,7 +43,7 @@ go build -ldflags "-X main.Version=1.0.0" -o obsidian-mcp ./cmd/obsidian-mcp
 ### Project Structure
 
 ```
-cmd/obsidian-mcp/     # Main application entry point
+cmd/obsitrace-mcp/    # Main application entry point
 internal/
   filesystem/         # FileSystemService - all file operations
   frontmatter/        # FrontmatterHandler - YAML parsing/validation
@@ -55,7 +55,7 @@ internal/
 
 ### Core Components
 
-**cmd/obsidian-mcp/main.go** - MCP server entry point
+**cmd/obsitrace-mcp/main.go** - MCP server entry point
 
 - Handles command-line arguments (--help, --version, vault path)
 - Initializes all services

@@ -13,7 +13,7 @@ import (
 	"sync"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"github.com/taigrr/obsidian-mcp/internal/types"
+	"github.com/Jnchk/obsitrace-mcp/internal/types"
 )
 
 func handleRead(ctx context.Context, req *mcp.CallToolRequest, input ReadInput) (*mcp.CallToolResult, ReadOutput, error) {

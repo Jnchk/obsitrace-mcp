@@ -11,9 +11,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/taigrr/obsidian-mcp/internal/frontmatter"
-	"github.com/taigrr/obsidian-mcp/internal/pathfilter"
-	"github.com/taigrr/obsidian-mcp/internal/types"
+	"github.com/Jnchk/obsitrace-mcp/internal/frontmatter"
+	"github.com/Jnchk/obsitrace-mcp/internal/pathfilter"
+	"github.com/Jnchk/obsitrace-mcp/internal/types"
 )
 
 // Service provides file system operations for the Obsidian vault.

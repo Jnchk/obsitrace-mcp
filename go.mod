@@ -1,4 +1,4 @@
-module github.com/taigrr/obsidian-mcp
+module github.com/Jnchk/obsitrace-mcp
 
 go 1.27.1
 

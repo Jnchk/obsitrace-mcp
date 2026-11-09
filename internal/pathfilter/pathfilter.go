@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/taigrr/obsidian-mcp/internal/types"
+	"github.com/Jnchk/obsitrace-mcp/internal/types"
 )
 
 // PathFilter filters allowed paths and file types.

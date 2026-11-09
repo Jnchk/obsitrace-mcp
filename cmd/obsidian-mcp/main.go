@@ -9,10 +9,10 @@ import (
 	"github.com/charmbracelet/fang"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/spf13/cobra"
-	"github.com/taigrr/obsidian-mcp/internal/filesystem"
-	"github.com/taigrr/obsidian-mcp/internal/frontmatter"
-	"github.com/taigrr/obsidian-mcp/internal/pathfilter"
-	"github.com/taigrr/obsidian-mcp/internal/search"
+	"github.com/Jnchk/obsitrace-mcp/internal/filesystem"
+	"github.com/Jnchk/obsitrace-mcp/internal/frontmatter"
+	"github.com/Jnchk/obsitrace-mcp/internal/pathfilter"
+	"github.com/Jnchk/obsitrace-mcp/internal/search"
 )
 
 var (

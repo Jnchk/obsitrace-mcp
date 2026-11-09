@@ -1,15 +1,15 @@
 version: 2
 
-project_name: obsidian-mcp
+project_name: obsitrace-mcp
 
 before:
   hooks:
     - go mod tidy
 
 builds:
-  - id: obsidian-mcp
-    main: ./cmd/obsidian-mcp
-    binary: obsidian-mcp
+  - id: obsitrace-mcp
+    main: ./cmd/obsitrace-mcp
+    binary: obsitrace-mcp
     env:
       - CGO_ENABLED=0
     goos:

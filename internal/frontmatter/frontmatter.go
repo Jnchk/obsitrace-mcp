@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/taigrr/obsidian-mcp/internal/types"
+	"github.com/Jnchk/obsitrace-mcp/internal/types"
 	"gopkg.in/yaml.v3"
 )
 

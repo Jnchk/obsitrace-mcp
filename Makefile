@@ -5,7 +5,7 @@ LDFLAGS := -ldflags "-X main.version=$(VERSION)"
 GOBIN ?= $(shell go env GOPATH)/bin
 
 build:
-	go build $(LDFLAGS) -o obsidian-mcp ./cmd/obsidian-mcp
+	go build $(LDFLAGS) -o obsitrace-mcp ./cmd/obsitrace-mcp
 
 test:
 	go test ./...
@@ -20,11 +20,11 @@ test-race:
 	go test -race -count=1 ./...
 
 clean:
-	rm -f obsidian-mcp
+	rm -f obsitrace-mcp
 
 install: build
 	install -d $(GOBIN)
-	install -m 0755 obsidian-mcp $(GOBIN)/obsidian-mcp
+	install -m 0755 obsitrace-mcp $(GOBIN)/obsitrace-mcp
 
 fmt:
 	goimports -w .

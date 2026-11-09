@@ -7,9 +7,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/taigrr/obsidian-mcp/internal/filesystem"
-	"github.com/taigrr/obsidian-mcp/internal/frontmatter"
-	"github.com/taigrr/obsidian-mcp/internal/pathfilter"
+	"github.com/Jnchk/obsitrace-mcp/internal/filesystem"
+	"github.com/Jnchk/obsitrace-mcp/internal/frontmatter"
+	"github.com/Jnchk/obsitrace-mcp/internal/pathfilter"
 )
 
 func setupTestVault(t *testing.T) string {

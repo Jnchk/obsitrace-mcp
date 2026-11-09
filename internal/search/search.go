@@ -11,9 +11,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/taigrr/obsidian-mcp/internal/pathfilter"
-	"github.com/taigrr/obsidian-mcp/internal/types"
-	"github.com/taigrr/obsidian-mcp/internal/uri"
+	"github.com/Jnchk/obsitrace-mcp/internal/pathfilter"
+	"github.com/Jnchk/obsitrace-mcp/internal/types"
+	"github.com/Jnchk/obsitrace-mcp/internal/uri"
 )
 
 // Service provides search functionality for the Obsidian vault.

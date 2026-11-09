@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/taigrr/obsidian-mcp/internal/types"
+	"github.com/Jnchk/obsitrace-mcp/internal/types"
 )
 
 func TestPathFilter_AllowsMarkdownFiles(t *testing.T) {

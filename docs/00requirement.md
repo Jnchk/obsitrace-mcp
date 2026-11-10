@@ -47,7 +47,7 @@ Skill 不能仅凭当前 MCP 工具定义，另起 Python/TypeScript 客户端�
 建议初始目录结构如下：
 
 ```text
-Worklog/
+Obsitrace/
 ├── Index/
 │   ├── Task Index.md
 │   ├── Task Done.md
@@ -68,7 +68,7 @@ Worklog/
     └── Custom/
 ```
 
-新任务详情存放于 `Worklog/Tasks/<project>/<task-id>.md`，其中 `<project>` 是用户在对话中提供或确认的项目名称；未提供项目时先询问，不创建 `Project` 或 `Unassigned` 等默认目录。已有任务详情保持原路径，不因新增状态列表而移动。
+新任务详情存放于 `Obsitrace/Tasks/<project>/<task-id>.md`，其中 `<project>` 是用户在对话中提供或确认的项目名称；未提供项目时先询问，不创建 `Project` 或 `Unassigned` 等默认目录。已有任务详情在根目录迁移后保留项目子目录和文件名。
 
 `Index/Task Index.md` 展示所有任务；`Index/Task Ongoing.md` 是待办、进行中和阻塞任务的动态列表；`Index/Task Done.md` 是已完成和已取消任务的动态列表。MCP 服务在任务创建或更新时同步刷新三个页面，后两个页面为总索引的派生视图。
 
@@ -222,8 +222,8 @@ Worklog/
 6. 项目是必填项；未提供时先询问。缺少截止日期、优先级等可选信息时仍可直接创建任务。
 7. 已完成任务留在原位置，只更新状态，不移动归档。
 8. 用户认可将数据筛选和自动化逻辑优先实现于现有 Go MCP 服务端；Skill 负责自然语言交互和总结表达，不另建 MCP 客户端。
-9. 任务详情新建于 `Worklog/Tasks/<project>/<task-id>.md`；已有任务详情不因增加状态列表而移动。
-10. `Worklog/Index/Task Ongoing.md` 汇总 `todo`、`in_progress`、`blocked`；`Worklog/Index/Task Done.md` 汇总 `done`、`cancelled`；两页由 MCP 从总索引刷新。
+9. 任务详情新建于 `Obsitrace/Tasks/<project>/<task-id>.md`；已有任务详情不因增加状态列表而移动。
+10. `Obsitrace/Index/Task Ongoing.md` 汇总 `todo`、`in_progress`、`blocked`；`Obsitrace/Index/Task Done.md` 汇总 `done`、`cancelled`；两页由 MCP 从总索引刷新。
 11. 每日日志以可读 Markdown 列表呈现，机器字段藏于 Obsidian 注释，并兼容旧日志行。
 
 ## 10. 实施状态与部署要求

@@ -22,11 +22,11 @@ func TestTaskLifecycleAndSummary(t *testing.T) {
 	if len(duplicates) != 0 || task.ID != "task-"+requestID {
 		t.Fatalf("unexpected create result: task=%+v duplicates=%v", task, duplicates)
 	}
-	if task.DetailPath != "Worklog/Tasks/Platform/"+task.ID+".md" {
+	if task.DetailPath != "Obsitrace/Tasks/Platform/"+task.ID+".md" {
 		t.Fatalf("detail path = %q, want project-specific path", task.DetailPath)
 	}
-	assertTaskView(t, root, "Worklog/Index/Task Ongoing.md", task.ID, true)
-	assertTaskView(t, root, "Worklog/Index/Task Done.md", task.ID, false)
+	assertTaskView(t, root, "Obsitrace/Index/Task Ongoing.md", task.ID, true)
+	assertTaskView(t, root, "Obsitrace/Index/Task Done.md", task.ID, false)
 
 	tasks, total, err := service.QueryTasks(TaskFilter{Statuses: []string{"todo"}, Limit: 10})
 	if err != nil {
@@ -74,7 +74,7 @@ func TestTaskLifecycleAndSummary(t *testing.T) {
 	if strings.Contains(string(logContent), "[tasks:") || !strings.Contains(string(logContent), "%%worklog:") {
 		t.Fatalf("daily log is not in readable, parseable format:\n%s", logContent)
 	}
-	if !strings.Contains(string(logContent), "[[Worklog/Tasks/Platform/"+task.ID+".md|"+task.ID+"]]") {
+	if !strings.Contains(string(logContent), "[[Obsitrace/Tasks/Platform/"+task.ID+".md|"+task.ID+"]]") {
 		t.Fatalf("daily log does not link to the task's actual detail path:\n%s", logContent)
 	}
 	for _, fact := range summary.Facts {
@@ -102,15 +102,15 @@ func TestTaskViewsFollowStatusAndPreserveTaskIndex(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if task.DetailPath != "Worklog/Tasks/Product Platform/"+task.ID+".md" {
+	if task.DetailPath != "Obsitrace/Tasks/Product Platform/"+task.ID+".md" {
 		t.Fatalf("updated detail path = %q, want project-specific path", task.DetailPath)
 	}
 	if _, err := os.Stat(filepath.Join(root, "Worklog", "Tasks", "Team Management", task.ID+".md")); !os.IsNotExist(err) {
 		t.Fatalf("old project detail should be moved, stat error = %v", err)
 	}
-	assertTaskView(t, root, "Worklog/Index/Task Index.md", task.ID, true)
-	assertTaskView(t, root, "Worklog/Index/Task Ongoing.md", task.ID, false)
-	assertTaskView(t, root, "Worklog/Index/Task Done.md", task.ID, true)
+	assertTaskView(t, root, "Obsitrace/Index/Task Index.md", task.ID, true)
+	assertTaskView(t, root, "Obsitrace/Index/Task Ongoing.md", task.ID, false)
+	assertTaskView(t, root, "Obsitrace/Index/Task Done.md", task.ID, true)
 
 	cancelled, _, err := service.CreateTask("550e8400-e29b-41d4-a716-446655440007", "Cancelled task", "", "Team Management", "", "", false)
 	if err != nil {
@@ -123,8 +123,8 @@ func TestTaskViewsFollowStatusAndPreserveTaskIndex(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertTaskView(t, root, "Worklog/Index/Task Ongoing.md", cancelled.ID, false)
-	assertTaskView(t, root, "Worklog/Index/Task Done.md", cancelled.ID, true)
+	assertTaskView(t, root, "Obsitrace/Index/Task Ongoing.md", cancelled.ID, false)
+	assertTaskView(t, root, "Obsitrace/Index/Task Done.md", cancelled.ID, true)
 
 	blocked, _, err := service.CreateTask("550e8400-e29b-41d4-a716-446655440009", "Blocked task", "", "Team Management", "", "", false)
 	if err != nil {
@@ -137,8 +137,8 @@ func TestTaskViewsFollowStatusAndPreserveTaskIndex(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertTaskView(t, root, "Worklog/Index/Task Ongoing.md", blocked.ID, true)
-	assertTaskView(t, root, "Worklog/Index/Task Done.md", blocked.ID, false)
+	assertTaskView(t, root, "Obsitrace/Index/Task Ongoing.md", blocked.ID, true)
+	assertTaskView(t, root, "Obsitrace/Index/Task Done.md", blocked.ID, false)
 }
 
 func TestSyncTasksUsesDetailH1AndRefreshesViews(t *testing.T) {
@@ -256,8 +256,8 @@ func TestReadIndexParsesTableTaskRecords(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	oldPath := filepath.Join(root, "Worklog", "Tasks", "General", task.ID+".md")
-	legacyPath := filepath.Join(root, "Worklog", "Tasks", "Project", task.ID+".md")
+	oldPath := filepath.Join(root, "Obsitrace", "Tasks", "General", task.ID+".md")
+	legacyPath := filepath.Join(root, "Obsitrace", "Tasks", "Project", task.ID+".md")
 	if err := os.MkdirAll(filepath.Dir(legacyPath), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -270,14 +270,14 @@ func TestReadIndexParsesTableTaskRecords(t *testing.T) {
 		t.Fatal(err)
 	}
 	indexText := strings.Replace(string(index), "[["+task.DetailPath+"\\|"+task.ID+"]]",
-		"[[Worklog/Tasks/Project/"+task.ID+".md\\|"+task.ID+"]]", 1)
+		"[[Obsitrace/Tasks/Project/"+task.ID+".md\\|"+task.ID+"]]", 1)
 	indexText = strings.Replace(indexText, "| todo |", "| done |", 1)
 	index = []byte(indexText)
 	if err := os.WriteFile(indexPath, index, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	tasks, _, err := service.QueryTasks(TaskFilter{Query: task.ID})
-	if err != nil || len(tasks) != 1 || tasks[0].DetailPath != "Worklog/Tasks/Project/"+task.ID+".md" || tasks[0].Status != "done" {
+	if err != nil || len(tasks) != 1 || tasks[0].DetailPath != "Obsitrace/Tasks/Project/"+task.ID+".md" || tasks[0].Status != "done" {
 		t.Fatalf("task table row was not parsed: tasks=%+v err=%v", tasks, err)
 	}
 }
@@ -387,7 +387,7 @@ func TestLinkifyURLsSeparatesAdjacentText(t *testing.T) {
 
 func TestParseLegacyLogMissingTextSeparator(t *testing.T) {
 	line := "- 2026-11-09T16:31:09+08:00 [task] [created] [tasks:task-550e8400-e29b-41d4-a716-446655440000]Task title [event:550e8400-e29b-41d4-a716-446655440000]"
-	fact, ok := parseLogLine(line, "Worklog/Logs/2026/11/2026-11-09.md")
+	fact, ok := parseLogLine(line, "Obsitrace/Logs/2026/11/2026-11-09.md")
 	if !ok || fact.Text != "Task title" {
 		t.Fatalf("legacy log line was not parsed: fact=%+v ok=%t", fact, ok)
 	}

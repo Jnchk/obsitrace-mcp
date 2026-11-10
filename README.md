@@ -37,12 +37,14 @@ All filtering and aggregation happens **inside the MCP server process**: the mod
 
 | Data | Default path |
 |---|---|
-| Task index (authoritative status) | `Worklog/Index/Task Index.md` |
-| Ongoing view (`todo` / `in_progress` / `blocked`) | `Worklog/Index/Task Ongoing.md` |
-| Done view (`done` / `cancelled`) | `Worklog/Index/Task Done.md` |
-| Task detail notes | `Worklog/Tasks/<project>/<task-id>.md` |
-| Daily logs | `Worklog/Logs/YYYY/MM/YYYY-MM-DD.md` |
-| Period summaries | `Worklog/Summaries/<Daily\|Weekly\|Monthly\|Yearly\|All Time\|Custom>/…` |
+| Task index (authoritative status) | `Obsitrace/Index/Task Index.md` |
+| Ongoing view (`todo` / `in_progress` / `blocked`) | `Obsitrace/Index/Task Ongoing.md` |
+| Done view (`done` / `cancelled`) | `Obsitrace/Index/Task Done.md` |
+| Task detail notes | `Obsitrace/Tasks/<project>/<task-id>.md` |
+| Daily logs | `Obsitrace/Logs/YYYY/MM/YYYY-MM-DD.md` |
+| Period summaries | `Obsitrace/Summaries/<Daily\|Weekly\|Monthly\|Yearly\|All Time\|Custom>/…` |
+
+The default vault root is `Obsitrace/`. Existing worklog notes were migrated from `Worklog/` with their internal links updated. Explicit `OBSIDIAN_WORKLOG_*` path environment variables override these defaults.
 
 Key behaviors:
 

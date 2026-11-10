@@ -62,17 +62,17 @@ Skill 中不实现 Vault 遍历、日期过滤或重复的 Markdown 解析逻辑
 
 | 用途 | 默认路径 |
 |---|---|
-| Task index | `Worklog/Index/Task Index.md` |
-| Task ongoing view | `Worklog/Index/Task Ongoing.md` |
-| Task done view | `Worklog/Index/Task Done.md` |
-| Task detail | `Worklog/Tasks/<project>/<task-id>.md` |
-| Daily log | `Worklog/Logs/YYYY/MM/YYYY-MM-DD.md` |
-| Summary | `Worklog/Summaries/Daily/YYYY-MM-DD.md`, `Worklog/Summaries/Weekly/YYYY-MM-DD.md` (week start), `Worklog/Summaries/Monthly/YYYY-MM.md`, `Worklog/Summaries/Yearly/YYYY.md`, `Worklog/Summaries/All Time/All Time.md`, `Worklog/Summaries/Custom/YYYY-MM-DD_to_YYYY-MM-DD.md` |
+| Task index | `Obsitrace/Index/Task Index.md` |
+| Task ongoing view | `Obsitrace/Index/Task Ongoing.md` |
+| Task done view | `Obsitrace/Index/Task Done.md` |
+| Task detail | `Obsitrace/Tasks/<project>/<task-id>.md` |
+| Daily log | `Obsitrace/Logs/YYYY/MM/YYYY-MM-DD.md` |
+| Summary | `Obsitrace/Summaries/Daily/YYYY-MM-DD.md`, `Obsitrace/Summaries/Weekly/YYYY-MM-DD.md` (week start), `Obsitrace/Summaries/Monthly/YYYY-MM.md`, `Obsitrace/Summaries/Yearly/YYYY.md`, `Obsitrace/Summaries/All Time/All Time.md`, `Obsitrace/Summaries/Custom/YYYY-MM-DD_to_YYYY-MM-DD.md` |
 
 完整目录结构：
 
 ```text
-Worklog/
+Obsitrace/
 ├── Index/
 │   ├── Task Index.md
 │   ├── Task Ongoing.md
@@ -103,7 +103,7 @@ Worklog/
 
 `Index/Task Index.md` 是全部任务的权威索引。`Index/Task Ongoing.md` 展示 `todo`、`in_progress`、`blocked`；`Index/Task Done.md` 展示 `done`、`cancelled`。两个列表页由 Go 服务根据总索引生成，在创建/更新任务时同步刷新；若同路径存在非生成文件，写入失败并保护原内容。三个页面使用相同的 Markdown 表格格式。
 
-通过 `mcp-config.json` 的 Obsidian MCP server `env` 配置时区。服务端从环境变量 `OBSIDIAN_TIMEZONE` 读取 IANA 时区标识；未设置时使用 `Asia/Shanghai`。若时区无效，MCP 服务启动时报错并停止，不静默回退到系统时区。Worklog路径按表中默认值使用；可用 `OBSIDIAN_WORKLOG_INDEX_PATH`、`OBSIDIAN_WORKLOG_TASK_DIR`、`OBSIDIAN_WORKLOG_LOG_DIR` 和 `OBSIDIAN_WORKLOG_SUMMARY_DIR` 覆盖索引、任务、日志和总结目录，均为相对 Vault 根目录的路径。不得遍历全 Vault 猜测目录或自动移动旧文件。
+通过 `mcp-config.json` 的 Obsidian MCP server `env` 配置时区。服务端从环境变量 `OBSIDIAN_TIMEZONE` 读取 IANA 时区标识；未设置时使用 `Asia/Shanghai`。若时区无效，MCP 服务启动时报错并停止，不静默回退到系统时区。Obsitrace 路径按表中默认值使用；可用 `OBSIDIAN_WORKLOG_INDEX_PATH`、`OBSIDIAN_WORKLOG_TASK_DIR`、`OBSIDIAN_WORKLOG_LOG_DIR` 和 `OBSIDIAN_WORKLOG_SUMMARY_DIR` 覆盖索引、任务、日志和总结目录，均为相对 Vault 根目录的路径。现有 Vault 的 `Worklog/` 内容已迁移到 `Obsitrace/` 并更新了内部链接；服务不会在其他 Vault 中自动猜测或迁移旧目录。显式配置的环境变量仍优先于默认路径。
 
 `mcp-config.json` 配置示例：
 
@@ -115,10 +115,10 @@ Worklog/
       "args": ["<vault-path>"],
       "env": {
         "OBSIDIAN_TIMEZONE": "Asia/Shanghai",
-        "OBSIDIAN_WORKLOG_INDEX_PATH": "Worklog/Index/Task Index.md",
-        "OBSIDIAN_WORKLOG_TASK_DIR": "Worklog/Tasks",
-        "OBSIDIAN_WORKLOG_LOG_DIR": "Worklog/Logs",
-        "OBSIDIAN_WORKLOG_SUMMARY_DIR": "Worklog/Summaries"
+        "OBSIDIAN_WORKLOG_INDEX_PATH": "Obsitrace/Index/Task Index.md",
+        "OBSIDIAN_WORKLOG_TASK_DIR": "Obsitrace/Tasks",
+        "OBSIDIAN_WORKLOG_LOG_DIR": "Obsitrace/Logs",
+        "OBSIDIAN_WORKLOG_SUMMARY_DIR": "Obsitrace/Summaries"
       }
     }
   }
@@ -127,7 +127,7 @@ Worklog/
 
 此配置由 MCP 宿主读取，并将 `env` 传给 stdio 子进程；MCP 服务不自行查找或解析宿主的配置文件。
 
-目录只在首次创建记录时按需生成。首次写入前检查目标文件；目标已存在但不符合预期格式时返回可操作错误，不覆盖。`OBSIDIAN_WORKLOG_TASK_DIR` 是项目子目录的根目录，默认值为 `Worklog/Tasks`。
+目录只在首次创建记录时按需生成。首次写入前检查目标文件；目标已存在但不符合预期格式时返回可操作错误，不覆盖。`OBSIDIAN_WORKLOG_TASK_DIR` 是项目子目录的根目录，默认值为 `Obsitrace/Tasks`。
 
 ### 4.2 总任务索引
 
@@ -150,7 +150,7 @@ This index tracks the current status of all work tasks. See each linked task not
 
 | ID | Title | Status | Project | Priority | Created | Updated | Due | Completed | Details |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| task-550e8400-e29b-41d4-a716-446655440000 | Check customer data | in_progress | Customer project |  | 2026-11-09 | 2026-11-09 | 2026-11-12 |  | [[Worklog/Tasks/Customer project/task-550e8400-e29b-41d4-a716-446655440000.md\|task-550e8400-e29b-41d4-a716-446655440000]] |
+| task-550e8400-e29b-41d4-a716-446655440000 | Check customer data | in_progress | Customer project |  | 2026-11-09 | 2026-11-09 | 2026-11-12 |  | [[Obsitrace/Tasks/Customer project/task-550e8400-e29b-41d4-a716-446655440000.md\|task-550e8400-e29b-41d4-a716-446655440000]] |
 ```
 
 - Status values are limited to `todo`, `in_progress`, `done`, `blocked`, and `cancelled`.
@@ -164,7 +164,7 @@ This index tracks the current status of all work tasks. See each linked task not
 
 ### 4.3 任务详情笔记
 
-新任务详情使用 YAML frontmatter 和 Markdown 正文，写入 `Worklog/Tasks/<project>/<task-id>.md`。task ID 由服务端从调用方 `requestId` 确定性生成（`task-<requestId>`），以便在创建响应丢失后安全重试而不遍历任务目录：
+新任务详情使用 YAML frontmatter 和 Markdown 正文，写入 `Obsitrace/Tasks/<project>/<task-id>.md`。task ID 由服务端从调用方 `requestId` 确定性生成（`task-<requestId>`），以便在创建响应丢失后安全重试而不遍历任务目录：
 
 ```markdown
 ---
@@ -201,7 +201,7 @@ date: 2026-11-09
 # Work Log - 2026-11-09
 
 - **15:00** · **achievement / recorded** — Integration testing passed in the test environment. %%worklog:2026-11-09T15:00:00+08:00|achievement|recorded||550e8400-e29b-41d4-a716-446655440003%%
-- **16:10** · **task / progress** · [[Worklog/Tasks/Customer project/task-550e8400-e29b-41d4-a716-446655440000.md|task-550e8400-e29b-41d4-a716-446655440000]] — About 70% complete; confirming discrepancies. %%worklog:2026-11-09T16:10:00+08:00|task|progress|task-550e8400-e29b-41d4-a716-446655440000|550e8400-e29b-41d4-a716-446655440002%%
+- **16:10** · **task / progress** · [[Obsitrace/Tasks/Customer project/task-550e8400-e29b-41d4-a716-446655440000.md|task-550e8400-e29b-41d4-a716-446655440000]] — About 70% complete; confirming discrepancies. %%worklog:2026-11-09T16:10:00+08:00|task|progress|task-550e8400-e29b-41d4-a716-446655440000|550e8400-e29b-41d4-a716-446655440002%%
 ```
 
 - `record_work` 创建的Worklog（可关联任务）及任务状态/进度事件均写入当日日志，事件正文同时写入任务详情历史，便于按时间范围筛选后直接生成总结。新日志带日期 frontmatter；事件机器元数据放在隐藏的 Obsidian 注释中，旧格式仍可解析。
@@ -236,7 +236,7 @@ Worklog工具在现有 `registerTools` 中注册，输入输出使用显式 Go s
 
 **输入**：`requestId`、`title`、`project` 必填；`description`、`dueDate`、`priority` 可选；`confirmDuplicate` 可选，默认为 `false`。`requestId` 是调用方生成的 UUID，为此次逻辑操作提供唯一标识，重试时原样复用。日期以 `YYYY-MM-DD` 输入。未提供项目时 Skill 先询问，不创建默认项目目录。新任务初始状态固定为 `todo`，创建时间由服务端生成。
 
-**处理**：校验字段和项目目录名；用索引检查可能重复项。若发现候选且 `confirmDuplicate=false`，返回 `duplicateCandidates` 而不写入；Skill 询问用户后使用原 `requestId` 和 `confirmDuplicate=true` 重试。由 `requestId` 生成稳定任务 ID，在 `Worklog/Tasks/<project>/` 创建详情笔记并更新总索引、状态视图和日志。修改项目名称时详情笔记随项目目录迁移；目标冲突时不覆盖。
+**处理**：校验字段和项目目录名；用索引检查可能重复项。若发现候选且 `confirmDuplicate=false`，返回 `duplicateCandidates` 而不写入；Skill 询问用户后使用原 `requestId` 和 `confirmDuplicate=true` 重试。由 `requestId` 生成稳定任务 ID，在 `Obsitrace/Tasks/<project>/` 创建详情笔记并更新总索引、状态视图和日志。修改项目名称时详情笔记随项目目录迁移；目标冲突时不覆盖。
 
 **输出**：`task` 精简记录、`createdPaths`（任务详情、总索引、状态视图和日志路径）、`success`、`partialFailure`。若多文件写入只有一处成功，返回失败和已完成步骤，不返回成功形态。
 

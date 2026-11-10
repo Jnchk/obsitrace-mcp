@@ -22,10 +22,10 @@ import (
 )
 
 const (
-	defaultIndexPath  = "Worklog/Index/Task Index.md"
-	defaultTaskDir    = "Worklog/Tasks"
-	defaultLogDir     = "Worklog/Logs"
-	defaultSummaryDir = "Worklog/Summaries"
+	defaultIndexPath  = "Obsitrace/Index/Task Index.md"
+	defaultTaskDir    = "Obsitrace/Tasks"
+	defaultLogDir     = "Obsitrace/Logs"
+	defaultSummaryDir = "Obsitrace/Summaries"
 )
 
 var (

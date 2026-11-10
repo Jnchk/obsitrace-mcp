@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/Jnchk/obsitrace-mcp/internal/worklog"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 type (
@@ -95,6 +95,13 @@ type (
 		Path    string `json:"path"`
 		Success bool   `json:"success"`
 	}
+
+	SyncTasksOutput struct {
+		Total        int      `json:"total"`
+		Updated      int      `json:"updated"`
+		UpdatedPaths []string `json:"updatedPaths"`
+		Success      bool     `json:"success"`
+	}
 )
 
 func registerWorklogTools(server *mcp.Server) {
@@ -116,6 +123,19 @@ func registerWorklogTools(server *mcp.Server) {
 	mcp.AddTool(server, &mcp.Tool{
 		Name: "save_work_summary", Description: "Save a user-requested summary only when its source digest is still current; existing notes are never overwritten.",
 	}, handleSaveWorkSummary)
+	mcp.AddTool(server, &mcp.Tool{
+		Name: "sync_tasks", Description: "Synchronize task titles from each task detail H1 to the task index and regenerate task status views.",
+	}, handleSyncTasks)
+}
+
+func handleSyncTasks(ctx context.Context, req *mcp.CallToolRequest, input struct{}) (*mcp.CallToolResult, SyncTasksOutput, error) {
+	result, err := worklogService.SyncTasks()
+	if err != nil {
+		return &mcp.CallToolResult{IsError: true}, SyncTasksOutput{}, err
+	}
+	return nil, SyncTasksOutput{
+		Total: result.Total, Updated: result.Updated, UpdatedPaths: result.UpdatedPaths, Success: true,
+	}, nil
 }
 
 func handleQueryTasks(ctx context.Context, req *mcp.CallToolRequest, input QueryTasksInput) (*mcp.CallToolResult, QueryTasksOutput, error) {

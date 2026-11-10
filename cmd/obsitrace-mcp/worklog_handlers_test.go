@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/Jnchk/obsitrace-mcp/internal/worklog"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 func TestRegisterWorklogTools(t *testing.T) {
@@ -27,6 +27,11 @@ func TestWorklogToolHandlers(t *testing.T) {
 	})
 	if err != nil || !created.Success || created.Task == nil || len(created.CreatedPaths) != 5 {
 		t.Fatalf("create handler: output=%+v err=%v", created, err)
+	}
+
+	_, synced, err := handleSyncTasks(context.Background(), nil, struct{}{})
+	if err != nil || !synced.Success || synced.Total != 1 || synced.Updated != 0 || len(synced.UpdatedPaths) != 3 {
+		t.Fatalf("sync handler: output=%+v err=%v", synced, err)
 	}
 
 	status := "in_progress"

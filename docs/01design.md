@@ -274,6 +274,10 @@ Worklog工具在现有 `registerTools` 中注册，输入输出使用显式 Go s
 
 仅在用户明确要求保存总结时调用。输入包括 `granularity`、`from`、`to`、总结正文和 `get_work_summary` 返回的 `sourceDigest`；可选 `alternateName` 只能是文件名，不能包含目录分隔符。服务端重新读取并校验当前来源摘要与该 digest 一致，来源路径和结构化 `facts` 由服务端重算而非信任调用者提供；日期合法、正文非空且目标文件不存在时才写入对应周期总结笔记。若默认目标已存在，调用者可指定安全文件名在同一总结目录另存；绝不覆盖。
 
+### 5.7 `sync_tasks`
+
+无输入。显式读取总索引中的所有任务详情，验证 frontmatter 类型及任务 ID，并从每篇详情提取第一个 H1（标题必须非空）；所有详情均通过校验后，才将标题写回总索引并重新生成 `Task Ongoing`、`Task Done`。返回任务总数、标题变更数及三个目标路径。该操作不修改任务更新时间、不追加 Progress History 或日志事件；遇到详情缺失、frontmatter 无效或缺少有效 H1 时在任何写入前报错。同步写入阶段仍复用索引快照校验及现有多文件写入错误处理。
+
 ## 6. 主要操作流程
 
 ### 6.1 创建任务
@@ -297,6 +301,12 @@ Worklog工具在现有 `registerTools` 中注册，输入输出使用显式 Go s
 2. 调用 `get_work_summary` 获取筛选后的事实、当前事项及来源。
 3. Skill 按“成果、进行中/阻塞、下一步”组织内容，区分历史事实与当前状态。
 4. 如果用户明确要求保存，再调用 `save_work_summary`；目标存在时提示冲突，并询问是否使用同一目录下的新文件名另存。保存工具不覆盖已有笔记。
+
+### 6.4 同步任务标题
+
+1. 用户明确要求“同步任务信息”或调用 `sync_tasks` 时，服务端逐条校验所有详情笔记并读取 H1。
+2. 全部校验通过后，更新总索引并重绘两个状态视图；若校验失败，不修改任何索引页面。
+3. 返回标题变更数和更新路径；不把标题同步误记为任务进展。
 
 ## 7. 日期与状态规则
 
@@ -373,7 +383,7 @@ MCP 工具对调用者可见地返回参数校验错误、索引/笔记格式错
 
 ## 11. 实施状态
 
-已在项目根目录实现 `internal/worklog`、MCP handlers 和 `skills/obsitrace/SKILL.md`。当前提供六个工具：`query_tasks`、`create_task`、`update_task`、`record_work`、`get_work_summary`、`save_work_summary`。写入按配置时区生成日期；创建/更新重试用 request UUID 去重；任务索引和总结目标通过快照检查避免静默覆盖；总结结果有 500 条事实和 50 条当前任务的上限。
+已在项目根目录实现 `internal/worklog`、MCP handlers 和 Worklog Skill。当前提供七个工具：`query_tasks`、`create_task`、`update_task`、`record_work`、`get_work_summary`、`save_work_summary`、`sync_tasks`。写入按配置时区生成日期；创建/更新重试用 request UUID 去重；任务索引和总结目标通过快照检查避免静默覆盖；总结结果有 500 条事实和 50 条当前任务的上限。
 
 Go 单元测试和 MCP handler 测试使用临时 Vault；在项目根目录运行 `go test ./...`、`go vet ./...` 和 `go build ./...` 验证。实际部署仍需由用户在 MCP 宿主配置中设置时区，并确认目标 Vault 中不存在需要保留的同路径笔记。
 

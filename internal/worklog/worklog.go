@@ -64,6 +64,12 @@ type Task struct {
 	LatestUpdate string `json:"latestUpdate,omitempty"`
 }
 
+type TaskSyncResult struct {
+	Total        int
+	Updated      int
+	UpdatedPaths []string
+}
+
 // TaskFilter limits task queries.
 type TaskFilter struct {
 	Statuses []string
@@ -241,6 +247,44 @@ func (s *Service) QueryTasks(filter TaskFilter) ([]Task, int, error) {
 		filtered[i].LatestUpdate = task.LatestUpdate
 	}
 	return filtered[offset:end], total, nil
+}
+
+// SyncTasks copies each task detail H1 title into the index and regenerates its views.
+func (s *Service) SyncTasks() (TaskSyncResult, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	tasks, prefix, suffix, snapshot, err := s.readIndex()
+	if err != nil {
+		return TaskSyncResult{}, err
+	}
+	result := TaskSyncResult{
+		Total:        len(tasks),
+		UpdatedPaths: append([]string{s.IndexRelativePath()}, s.TaskViewPaths()...),
+	}
+	for i := range tasks {
+		note, err := s.readRaw(tasks[i].DetailPath)
+		if err != nil {
+			return TaskSyncResult{}, fmt.Errorf("sync task %q detail %q: %w", tasks[i].ID, tasks[i].DetailPath, err)
+		}
+		var metadata map[string]any
+		body, err := parseFrontmatter(note, &metadata)
+		if err != nil || metadata["type"] != "work-task" || metadata["id"] != tasks[i].ID {
+			return TaskSyncResult{}, fmt.Errorf("sync task %q detail %q has invalid frontmatter or mismatched ID", tasks[i].ID, tasks[i].DetailPath)
+		}
+		title, ok := taskH1(body)
+		if !ok {
+			return TaskSyncResult{}, fmt.Errorf("sync task %q detail %q has no non-empty H1 title", tasks[i].ID, tasks[i].DetailPath)
+		}
+		if tasks[i].Title != title {
+			tasks[i].Title = title
+			result.Updated++
+		}
+	}
+	if err := s.writeIndex(tasks, prefix, suffix, time.Now().In(s.location), snapshot); err != nil {
+		return TaskSyncResult{}, fmt.Errorf("sync task titles and regenerate task views: %w", err)
+	}
+	return result, nil
 }
 
 // CreateTask creates a task. Repeating the same request ID safely completes missing writes.
@@ -1474,6 +1518,31 @@ func parseFrontmatter(note string, metadata *map[string]any) (string, error) {
 	bodyStart := 4 + end + len("\n---")
 	body := strings.TrimPrefix(note[bodyStart:], "\n")
 	return body, nil
+}
+
+func taskH1(body string) (string, bool) {
+	inFence := false
+	for _, line := range strings.Split(body, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "```") || strings.HasPrefix(trimmed, "~~~") {
+			inFence = !inFence
+			continue
+		}
+		if inFence || !strings.HasPrefix(trimmed, "# ") {
+			continue
+		}
+		title := strings.TrimSpace(strings.TrimPrefix(trimmed, "# "))
+		hashes := len(title)
+		for hashes > 0 && title[hashes-1] == '#' {
+			hashes--
+		}
+		if hashes < len(title) && (hashes == 0 || title[hashes-1] == ' ' || title[hashes-1] == '\t') {
+			title = strings.TrimSpace(title[:hashes])
+		}
+		title = cleanText(title)
+		return title, title != ""
+	}
+	return "", false
 }
 
 func taskDetail(task Task, description, timestamp, requestID, event, text string) string {

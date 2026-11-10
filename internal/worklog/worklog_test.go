@@ -141,6 +141,111 @@ func TestTaskViewsFollowStatusAndPreserveTaskIndex(t *testing.T) {
 	assertTaskView(t, root, "Worklog/Index/Task Done.md", blocked.ID, false)
 }
 
+func TestSyncTasksUsesDetailH1AndRefreshesViews(t *testing.T) {
+	root := t.TempDir()
+	service, err := New(root, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	task, _, err := service.CreateTask("550e8400-e29b-41d4-a716-446655440030", "Original title", "", "Platform", "", "", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	detailPath := filepath.Join(root, filepath.FromSlash(task.DetailPath))
+	detail, err := os.ReadFile(detailPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(detailPath, []byte(strings.Replace(string(detail), "# Original title", "# Updated title", 1)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := service.SyncTasks()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Total != 1 || result.Updated != 1 || len(result.UpdatedPaths) != 3 {
+		t.Fatalf("unexpected sync result: %+v", result)
+	}
+	tasks, total, err := service.QueryTasks(TaskFilter{Query: "Updated title"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if total != 1 || len(tasks) != 1 || tasks[0].Title != "Updated title" {
+		t.Fatalf("index title was not synchronized: total=%d tasks=%+v", total, tasks)
+	}
+	for _, path := range []string{service.IndexRelativePath(), service.TaskViewPaths()[0]} {
+		content, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(path)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(content), "Updated title") || strings.Contains(string(content), "Original title") {
+			t.Fatalf("view %q was not synchronized:\n%s", path, content)
+		}
+	}
+	donePath := filepath.Join(root, filepath.FromSlash(service.TaskViewPaths()[1]))
+	done, err := os.ReadFile(donePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(done), "Original title") {
+		t.Fatalf("done view contains a stale title:\n%s", done)
+	}
+}
+
+func TestSyncTasksValidatesAllDetailsBeforeWriting(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		edit func(string) string
+	}{
+		{name: "missing H1", edit: func(note string) string { return strings.Replace(note, "# Original title", "## Original title", 1) }},
+		{name: "mismatched ID", edit: func(note string) string {
+			return strings.Replace(note, "id: task-550e8400-e29b-41d4-a716-446655440031", "id: task-other", 1)
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			root := t.TempDir()
+			service, err := New(root, Config{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			task, _, err := service.CreateTask("550e8400-e29b-41d4-a716-446655440031", "Original title", "", "Platform", "", "", false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			paths := append([]string{service.IndexRelativePath()}, service.TaskViewPaths()...)
+			before := make([][]byte, len(paths))
+			for i, path := range paths {
+				before[i], err = os.ReadFile(filepath.Join(root, filepath.FromSlash(path)))
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			detailPath := filepath.Join(root, filepath.FromSlash(task.DetailPath))
+			detail, err := os.ReadFile(detailPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(detailPath, []byte(test.edit(string(detail))), 0o600); err != nil {
+				t.Fatal(err)
+			}
+
+			if _, err := service.SyncTasks(); err == nil {
+				t.Fatal("expected invalid task detail error")
+			}
+			for i, path := range paths {
+				after, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(path)))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if string(after) != string(before[i]) {
+					t.Fatalf("%s changed despite invalid task detail", path)
+				}
+			}
+		})
+	}
+}
+
 func TestReadIndexParsesTableTaskRecords(t *testing.T) {
 	root := t.TempDir()
 	service, err := New(root, Config{})

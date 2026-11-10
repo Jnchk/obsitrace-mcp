@@ -189,6 +189,68 @@ func TestParseTableRowPreservesEscapedPipesAndWikiAliases(t *testing.T) {
 	}
 }
 
+func TestURLsBecomeClickableInTaskHistoryAndLogs(t *testing.T) {
+	root := t.TempDir()
+	service, err := New(root, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	task, _, err := service.CreateTask(
+		"550e8400-e29b-41d4-a716-446655440040",
+		"Redmine task",
+		"Ticket: https://redmine.example/issues/14331#note-64.",
+		"General", "", "", false,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	status := "in_progress"
+	progress := "Posted an update at https://redmine.example/issues/14331#note-64."
+	description := "Details: https://redmine.example/issues/14331#note-64."
+	task, err = service.UpdateTask(TaskUpdate{
+		RequestID: "550e8400-e29b-41d4-a716-446655440041",
+		ID:        task.ID, Status: &status, Progress: progress, Description: &description,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	detail, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(task.DetailPath)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	clickableURL := "[https://redmine.example/issues/14331#note-64](<https://redmine.example/issues/14331#note-64>)"
+	if !strings.Contains(string(detail), clickableURL) ||
+		!strings.Contains(string(detail), "Details: "+clickableURL+".") {
+		t.Fatalf("task note URLs were not rendered as clickable links:\n%s", detail)
+	}
+
+	logPath, err := service.DailyLogPath(task.Updated)
+	if err != nil {
+		t.Fatal(err)
+	}
+	log, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(logPath)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(log), clickableURL) {
+		t.Fatalf("daily log URL was not rendered as a clickable link:\n%s", log)
+	}
+	if _, err := service.UpdateTask(TaskUpdate{
+		RequestID: "550e8400-e29b-41d4-a716-446655440041",
+		ID:        task.ID, Status: &status, Progress: progress,
+	}); err != nil {
+		t.Fatalf("retry with URL failed: %v", err)
+	}
+}
+
+func TestLinkifyURLsPreservesExistingMarkdownLinks(t *testing.T) {
+	input := "Bare https://example.com/page. Existing [label](https://already.example/path) and <https://auto.example/path>."
+	want := "Bare [https://example.com/page](<https://example.com/page>). Existing [label](https://already.example/path) and <https://auto.example/path>."
+	if got := linkifyURLs(input); got != want {
+		t.Fatalf("linkifyURLs() = %q, want %q", got, want)
+	}
+}
+
 func TestParseLegacyLogMissingTextSeparator(t *testing.T) {
 	line := "- 2026-11-09T16:31:09+08:00 [task] [created] [tasks:task-550e8400-e29b-41d4-a716-446655440000]Task title [event:550e8400-e29b-41d4-a716-446655440000]"
 	fact, ok := parseLogLine(line, "Worklog/Logs/2026/11/2026-11-09.md")

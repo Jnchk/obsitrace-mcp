@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -32,6 +33,8 @@ var (
 	logLine             = regexp.MustCompile(`^- (\d{4}-\d{2}-\d{2})T\S+ \[([^\]]*)\] \[([^\]]*)\] \[tasks:([^\]]*)\] ?(.*) \[event:[0-9a-f-]+\]$`)
 	readableLogLine     = regexp.MustCompile(`^- (.*) %%worklog:([^|]*)\|([^|]*)\|([^|]*)\|([^|]*)\|([0-9a-f-]+)%%$`)
 	htmlReadableLogLine = regexp.MustCompile(`^- <!--worklog:([^|]*)\|([^|]*)\|([^|]*)\|([^|]*)\|([0-9a-f-]+)--> (.*)$`)
+	bareURL             = regexp.MustCompile(`https?://[^\s<>]+`)
+	autoLinkedURL       = regexp.MustCompile(`\[([^\]]+)\]\(<(https?://[^>]+)>\)`)
 )
 
 // Config contains worklog paths relative to the vault root.
@@ -1022,7 +1025,7 @@ func (s *Service) appendEvent(date time.Time, requestID, category, event, text s
 	if len(displayRefs) > 0 {
 		display += " · " + strings.Join(displayRefs, ", ")
 	}
-	display += " — " + sanitize(text)
+	display += " — " + linkifyURLs(sanitize(text))
 	line := fmt.Sprintf("- %s %%%%worklog:%s|%s|%s|%s|%s%%%%\n",
 		display, recordedAt.Format(time.RFC3339), sanitize(category), sanitize(event), ids, strings.ToLower(requestID))
 	legacyMarker := "[event:" + strings.ToLower(requestID) + "]"
@@ -1280,6 +1283,53 @@ func sanitize(value string) string {
 	return strings.NewReplacer("\r", " ", "\n", " ", "[", "(", "]", ")").Replace(cleanText(value))
 }
 
+func linkifyURLs(value string) string {
+	matches := bareURL.FindAllStringIndex(value, -1)
+	if len(matches) == 0 {
+		return value
+	}
+	var result strings.Builder
+	last := 0
+	for _, match := range matches {
+		start, end := match[0], match[1]
+		if start > 0 && (value[start-1] == '<' || value[start-1] == '(' && start > 1 && value[start-2] == ']') {
+			continue
+		}
+		urlEnd := end
+		for urlEnd > start && strings.ContainsRune(".,;:!?", rune(value[urlEnd-1])) {
+			urlEnd--
+		}
+		for urlEnd > start && value[urlEnd-1] == ')' {
+			urlText := value[start:urlEnd]
+			if strings.Count(urlText, ")") <= strings.Count(urlText, "(") {
+				break
+			}
+			urlEnd--
+		}
+		parsed, err := url.Parse(value[start:urlEnd])
+		if urlEnd == start || err != nil || parsed.Host == "" {
+			continue
+		}
+		result.WriteString(value[last:start])
+		urlText := value[start:urlEnd]
+		result.WriteByte('[')
+		result.WriteString(urlText)
+		result.WriteString("](<")
+		result.WriteString(urlText)
+		result.WriteString(">)")
+		last = urlEnd
+	}
+	if last == 0 {
+		return value
+	}
+	result.WriteString(value[last:])
+	return result.String()
+}
+
+func plainAutoLinkedURLs(value string) string {
+	return autoLinkedURL.ReplaceAllString(value, "$1")
+}
+
 func equalCells(cells, expected []string) bool {
 	if len(cells) != len(expected) {
 		return false
@@ -1406,7 +1456,7 @@ func taskDetail(task Task, description, timestamp, requestID, event, text string
 	b.WriteString("---\n\n# ")
 	b.WriteString(task.Title)
 	b.WriteString("\n\n## Description\n")
-	b.WriteString(strings.TrimSpace(description))
+	b.WriteString(linkifyURLs(strings.TrimSpace(description)))
 	b.WriteString("\n\n## Progress History\n- ")
 	b.WriteString(timestamp)
 	b.WriteString(" [event:")
@@ -1414,7 +1464,7 @@ func taskDetail(task Task, description, timestamp, requestID, event, text string
 	b.WriteString("] [")
 	b.WriteString(event)
 	b.WriteString("] ")
-	b.WriteString(sanitize(text))
+	b.WriteString(linkifyURLs(sanitize(text)))
 	b.WriteString("\n")
 	return b.String()
 }
@@ -1440,7 +1490,7 @@ func appendTaskEvent(note, requestID, timestamp, status, text string, descriptio
 		return "", fmt.Errorf("task detail has unexpected type")
 	}
 	eventID := "[event:" + strings.ToLower(requestID) + "]"
-	expectedEvent := eventID + " [" + status + "] " + sanitize(text)
+	expectedEvent := eventID + " [" + status + "] " + linkifyURLs(sanitize(text))
 	for _, line := range strings.Split(body, "\n") {
 		if !strings.Contains(line, eventID) {
 			continue
@@ -1462,7 +1512,7 @@ func appendTaskEvent(note, requestID, timestamp, status, text string, descriptio
 		if start < 0 || end < start {
 			return "", fmt.Errorf("task detail sections are invalid")
 		}
-		body = body[:start+len("## Description\n")] + strings.TrimSpace(*description) + "\n\n" + body[end:]
+		body = body[:start+len("## Description\n")] + linkifyURLs(strings.TrimSpace(*description)) + "\n\n" + body[end:]
 	}
 	if title != nil {
 		titleAt := strings.Index(body, "# ")
@@ -1473,7 +1523,7 @@ func appendTaskEvent(note, requestID, timestamp, status, text string, descriptio
 			}
 		}
 	}
-	line := "- " + timestamp + " " + eventID + " [" + status + "] " + sanitize(text) + "\n"
+	line := "- " + timestamp + " " + eventID + " [" + status + "] " + linkifyURLs(sanitize(text)) + "\n"
 	historyAt := strings.Index(body, "## Progress History")
 	if historyAt < 0 {
 		return "", fmt.Errorf("task detail progress history is missing")
@@ -1572,6 +1622,7 @@ func parseLogLine(line, source string) (Fact, bool) {
 		if separator := strings.Index(text, " — "); separator >= 0 {
 			text = text[separator+len(" — "):]
 		}
+		text = plainAutoLinkedURLs(text)
 		return Fact{Date: date, Category: match[3] + "/" + match[4], Text: text, TaskIDs: taskIDs, Source: source}, true
 	}
 	if match := htmlReadableLogLine.FindStringSubmatch(line); match != nil {
@@ -1586,6 +1637,7 @@ func parseLogLine(line, source string) (Fact, bool) {
 		if separator := strings.Index(text, " — "); separator >= 0 {
 			text = text[separator+len(" — "):]
 		}
+		text = plainAutoLinkedURLs(text)
 		return Fact{Date: match[1][:10], Category: match[2] + "/" + match[3], Text: text, TaskIDs: taskIDs, Source: source}, true
 	}
 	match := logLine.FindStringSubmatch(line)

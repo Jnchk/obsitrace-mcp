@@ -251,6 +251,35 @@ func TestLinkifyURLsPreservesExistingMarkdownLinks(t *testing.T) {
 	}
 }
 
+func TestLinkifyURLsSeparatesAdjacentText(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{
+			input: "https://example.com/issues/1后续内容",
+			want:  "[https://example.com/issues/1](<https://example.com/issues/1>) 后续内容",
+		},
+		{
+			input: "讨论（https://example.com/issues/1#note-9）的结果",
+			want:  "讨论（[https://example.com/issues/1#note-9](<https://example.com/issues/1#note-9>)） 的结果",
+		},
+		{
+			input: "See https://example.com/path, then continue",
+			want:  "See [https://example.com/path](<https://example.com/path>), then continue",
+		},
+		{
+			input: "[https://example.com/path](<https://example.com/path>)",
+			want:  "[https://example.com/path](<https://example.com/path>)",
+		},
+	}
+	for _, test := range tests {
+		if got := linkifyURLs(test.input); got != test.want {
+			t.Errorf("linkifyURLs(%q) = %q, want %q", test.input, got, test.want)
+		}
+	}
+}
+
 func TestParseLegacyLogMissingTextSeparator(t *testing.T) {
 	line := "- 2026-11-09T16:31:09+08:00 [task] [created] [tasks:task-550e8400-e29b-41d4-a716-446655440000]Task title [event:550e8400-e29b-41d4-a716-446655440000]"
 	fact, ok := parseLogLine(line, "Worklog/Logs/2026/11/2026-11-09.md")

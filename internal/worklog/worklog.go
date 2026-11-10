@@ -15,6 +15,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"gopkg.in/yaml.v3"
 )
@@ -33,7 +35,7 @@ var (
 	logLine             = regexp.MustCompile(`^- (\d{4}-\d{2}-\d{2})T\S+ \[([^\]]*)\] \[([^\]]*)\] \[tasks:([^\]]*)\] ?(.*) \[event:[0-9a-f-]+\]$`)
 	readableLogLine     = regexp.MustCompile(`^- (.*) %%worklog:([^|]*)\|([^|]*)\|([^|]*)\|([^|]*)\|([0-9a-f-]+)%%$`)
 	htmlReadableLogLine = regexp.MustCompile(`^- <!--worklog:([^|]*)\|([^|]*)\|([^|]*)\|([^|]*)\|([0-9a-f-]+)--> (.*)$`)
-	bareURL             = regexp.MustCompile(`https?://[^\s<>]+`)
+	bareURL             = regexp.MustCompile(`https?://[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]+`)
 	autoLinkedURL       = regexp.MustCompile(`\[([^\]]+)\]\(<(https?://[^>]+)>\)`)
 )
 
@@ -1288,10 +1290,21 @@ func linkifyURLs(value string) string {
 	if len(matches) == 0 {
 		return value
 	}
+	existingLinks := autoLinkedURL.FindAllStringIndex(value, -1)
 	var result strings.Builder
 	last := 0
 	for _, match := range matches {
 		start, end := match[0], match[1]
+		insideExistingLink := false
+		for _, link := range existingLinks {
+			if start >= link[0] && start < link[1] {
+				insideExistingLink = true
+				break
+			}
+		}
+		if insideExistingLink {
+			continue
+		}
 		if start > 0 && (value[start-1] == '<' || value[start-1] == '(' && start > 1 && value[start-2] == ']') {
 			continue
 		}
@@ -1317,7 +1330,22 @@ func linkifyURLs(value string) string {
 		result.WriteString("](<")
 		result.WriteString(urlText)
 		result.WriteString(">)")
-		last = urlEnd
+		suffixEnd := urlEnd
+		for suffixEnd < len(value) {
+			r, size := utf8.DecodeRuneInString(value[suffixEnd:])
+			if !strings.ContainsRune(".,;:!?)]}，。；：！？、）】」』》", r) {
+				break
+			}
+			suffixEnd += size
+		}
+		result.WriteString(value[urlEnd:suffixEnd])
+		if suffixEnd < len(value) {
+			r, _ := utf8.DecodeRuneInString(value[suffixEnd:])
+			if !unicode.IsSpace(r) {
+				result.WriteByte(' ')
+			}
+		}
+		last = suffixEnd
 	}
 	if last == 0 {
 		return value

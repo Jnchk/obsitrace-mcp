@@ -112,7 +112,7 @@ func registerWorklogTools(server *mcp.Server) {
 		Name: "create_task", Description: "Create a task in the worklog. Reuse requestId on retries; confirmDuplicate only after reviewing returned candidates.",
 	}, handleCreateTask)
 	mcp.AddTool(server, &mcp.Tool{
-		Name: "update_task", Description: "Update task fields and append a progress event to task history and its daily log.",
+		Name: "update_task", Description: "Update task fields and append a progress event to task history and its daily log. A non-empty progress update moves a todo task to in_progress unless status is explicitly provided.",
 	}, handleUpdateTask)
 	mcp.AddTool(server, &mcp.Tool{
 		Name: "record_work", Description: "Record a dated work fact in the daily log, optionally linked to existing tasks.",

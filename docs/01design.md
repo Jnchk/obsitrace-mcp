@@ -244,7 +244,7 @@ Worklog工具在现有 `registerTools` 中注册，输入输出使用显式 Go s
 
 **输入**：`requestId`、`taskId` 必填；`status` 可为 `todo`、`in_progress`、`done`、`blocked` 或 `cancelled`；`progress`、`dueDate`、`project`、`priority`、`title`、`description` 可选。`requestId` 在同一逻辑操作重试时必须保持不变。
 
-**处理**：按 ID 在索引定位唯一任务；读取并验证详情笔记；以 `requestId` 作为 event ID，使用服务端时间；更新详情历史、索引当前字段，并在当日日志登记事件引用。Skill 从用户本次更新描述中提炼有事实依据的进展摘要，并将用户提供的 Redmine 引用包含在同一条 `progress` 事件中；无法提炼有意义进展时省略 `progress`，由服务端使用默认文本。相同 `requestId` 重试时返回既有结果或补齐未完成写入，不重复追加。
+**处理**：按 ID 在索引定位唯一任务；读取并验证详情笔记；以 `requestId` 作为 event ID，使用服务端时间；更新详情历史、索引当前字段，并在当日日志登记事件引用。Skill 从用户本次更新描述中提炼有事实依据的进展摘要，并将用户提供的 Redmine 引用包含在同一条 `progress` 事件中；无法提炼有意义进展时省略 `progress`，由服务端使用默认文本。任务当前为 `todo`、`progress` 非空且调用方未显式提供 `status` 时，服务端自动将状态改为 `in_progress`；调用方显式提供的状态优先，其他当前状态不因进展记录自动改变。相同 `requestId` 重试时返回既有结果或补齐未完成写入，不重复追加。
 
 **输出**：最新精简任务、event ID 和目标路径。索引、详情或日志任一操作失败均以 MCP 错误及部分失败上下文返回。
 

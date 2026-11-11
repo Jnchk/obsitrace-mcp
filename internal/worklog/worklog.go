@@ -415,6 +415,10 @@ func (s *Service) UpdateTask(update TaskUpdate) (Task, error) {
 	if err != nil {
 		return Task{}, err
 	}
+	if update.Status == nil && task.Status == "todo" && strings.TrimSpace(update.Progress) != "" {
+		status := "in_progress"
+		update.Status = &status
+	}
 	eventTime := time.Now().In(s.location)
 	if originalTime, ok := taskEventTime(detail, update.RequestID, s.location); ok {
 		eventTime = originalTime
@@ -478,7 +482,7 @@ func (s *Service) UpdateTask(update TaskUpdate) (Task, error) {
 		task.Due = *update.Due
 	}
 	task.Updated = eventTime.Format("2006-01-02")
-	event := update.Progress
+	event := strings.TrimSpace(update.Progress)
 	if event == "" {
 		event = "Task fields updated."
 	}

@@ -84,6 +84,82 @@ func TestTaskLifecycleAndSummary(t *testing.T) {
 	}
 }
 
+func TestProgressMovesTodoToInProgressWithoutOverridingExplicitStatus(t *testing.T) {
+	service, err := New(t.TempDir(), Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	todoTask, _, err := service.CreateTask("550e8400-e29b-41d4-a716-446655440040", "Start work", "", "Platform", "", "", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	updated, err := service.UpdateTask(TaskUpdate{
+		RequestID: "550e8400-e29b-41d4-a716-446655440041",
+		ID:        todoTask.ID, Progress: "Started implementation",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.Status != "in_progress" {
+		t.Fatalf("status after progress update = %q, want in_progress", updated.Status)
+	}
+
+	blockedTask, _, err := service.CreateTask("550e8400-e29b-41d4-a716-446655440042", "Keep blocked", "", "Platform", "", "", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	blocked := "blocked"
+	blockedTask, err = service.UpdateTask(TaskUpdate{
+		RequestID: "550e8400-e29b-41d4-a716-446655440043",
+		ID:        blockedTask.ID, Status: &blocked,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	blockedTask, err = service.UpdateTask(TaskUpdate{
+		RequestID: "550e8400-e29b-41d4-a716-446655440044",
+		ID:        blockedTask.ID, Progress: "Investigated the blocker",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if blockedTask.Status != "blocked" {
+		t.Fatalf("status after blocked task progress = %q, want blocked", blockedTask.Status)
+	}
+
+	explicitTask, _, err := service.CreateTask("550e8400-e29b-41d4-a716-446655440045", "Respect explicit status", "", "Platform", "", "", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	done := "done"
+	explicitTask, err = service.UpdateTask(TaskUpdate{
+		RequestID: "550e8400-e29b-41d4-a716-446655440046",
+		ID:        explicitTask.ID, Status: &done, Progress: "Completed and verified",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if explicitTask.Status != done {
+		t.Fatalf("explicit status = %q, want %q", explicitTask.Status, done)
+	}
+
+	emptyProgressTask, _, err := service.CreateTask("550e8400-e29b-41d4-a716-446655440047", "Ignore blank progress", "", "Platform", "", "", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	emptyProgressTask, err = service.UpdateTask(TaskUpdate{
+		RequestID: "550e8400-e29b-41d4-a716-446655440048",
+		ID:        emptyProgressTask.ID, Progress: "   ",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if emptyProgressTask.Status != "todo" {
+		t.Fatalf("status after blank progress = %q, want todo", emptyProgressTask.Status)
+	}
+}
+
 func TestTaskViewsFollowStatusAndPreserveTaskIndex(t *testing.T) {
 	root := t.TempDir()
 	service, err := New(root, Config{})

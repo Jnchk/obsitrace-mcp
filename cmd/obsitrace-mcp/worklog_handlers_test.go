@@ -34,12 +34,11 @@ func TestWorklogToolHandlers(t *testing.T) {
 		t.Fatalf("sync handler: output=%+v err=%v", synced, err)
 	}
 
-	status := "in_progress"
 	_, updated, err := handleUpdateTask(context.Background(), nil, UpdateTaskInput{
 		RequestID: "550e8400-e29b-41d4-a716-446655440101",
-		TaskID:    created.Task.ID, Status: &status, Progress: "Tests are underway",
+		TaskID:    created.Task.ID, Progress: "Tests are underway",
 	})
-	if err != nil || !updated.Success || len(updated.UpdatedPaths) != 5 {
+	if err != nil || !updated.Success || updated.Task.Status != "in_progress" || len(updated.UpdatedPaths) != 5 {
 		t.Fatalf("update handler: output=%+v err=%v", updated, err)
 	}
 

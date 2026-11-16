@@ -5,21 +5,25 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
-	"github.com/charmbracelet/fang"
-	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"github.com/spf13/cobra"
 	"github.com/Jnchk/obsitrace-mcp/internal/filesystem"
 	"github.com/Jnchk/obsitrace-mcp/internal/frontmatter"
 	"github.com/Jnchk/obsitrace-mcp/internal/pathfilter"
 	"github.com/Jnchk/obsitrace-mcp/internal/search"
 	"github.com/Jnchk/obsitrace-mcp/internal/worklog"
+	"github.com/charmbracelet/fang"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"github.com/spf13/cobra"
 )
 
 var (
 	fileSystem     *filesystem.Service
 	searchService  *search.Service
 	worklogService *worklog.Service
+
+	httpAddrs []string
+	authToken string
 )
 
 func main() {
@@ -35,6 +39,11 @@ boundaries.`,
 		Args:    cobra.MaximumNArgs(1),
 		RunE:    runServer,
 	}
+
+	cmd.Flags().StringSliceVar(&httpAddrs, "http", strings.Split(os.Getenv("OBSITRACE_HTTP_ADDR"), ","),
+		"serve MCP over Streamable HTTP on one or more addresses instead of stdio (repeat the flag or comma-separate, e.g. 127.0.0.1:8787,192.168.1.10:8787)")
+	cmd.Flags().StringVar(&authToken, "auth-token", os.Getenv("OBSITRACE_AUTH_TOKEN"),
+		"bearer token required by --http (mandatory for non-loopback addresses)")
 
 	if err := fang.Execute(
 		context.Background(),
@@ -83,6 +92,11 @@ func runServer(cmd *cobra.Command, args []string) error {
 	}, nil)
 
 	registerTools(server)
+
+	addrs := normalizeAddrs(httpAddrs)
+	if len(addrs) > 0 {
+		return runHTTP(server, addrs, authToken)
+	}
 
 	if err := server.Run(cmd.Context(), &mcp.StdioTransport{}); err != nil {
 		return fmt.Errorf("error running server: %w", err)

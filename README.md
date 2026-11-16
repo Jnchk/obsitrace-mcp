@@ -70,6 +70,8 @@ Key behaviors:
 
 - `OBSIDIAN_TIMEZONE` — IANA timezone used for worklog dates and period boundaries; defaults to `Asia/Shanghai`. An invalid timezone prevents startup (it never silently falls back to the system clock).
 - `OBSIDIAN_WORKLOG_INDEX_PATH`, `OBSIDIAN_WORKLOG_TASK_DIR`, `OBSIDIAN_WORKLOG_LOG_DIR`, `OBSIDIAN_WORKLOG_SUMMARY_DIR` — optional overrides for the paths above. Each must be relative to the vault root.
+- `OBSITRACE_HTTP_ADDR` — optional default for `--http`, comma-separated for several addresses; when set, the server starts in HTTP mode instead of stdio.
+- `OBSITRACE_AUTH_TOKEN` — optional default for `--auth-token`; required when `--http` binds a non-loopback address.
 
 ```json
 {
@@ -201,7 +203,9 @@ obsitrace-mcp ~/obsidian
 obsitrace-mcp
 ```
 
-Once started, the server communicates over **stdio** using the MCP protocol — it has no network endpoint. Point your MCP client at the binary and pass the vault path via `args` (see the [MCP configuration](#environment-configuration) example above).
+Once started, the server communicates over **stdio** by default. Point your MCP client at the binary and pass the vault path via `args` (see the [MCP configuration](#environment-configuration) example above).
+
+For clients that connect over the network, pass `--http <addr>[,...]` to serve MCP over Streamable HTTP instead. Use `--auth-token` (or `OBSITRACE_AUTH_TOKEN`) for any address that is not loopback. See [docs/02remote-access.md](docs/02remote-access.md) for client configuration, the nginx TLS setup, and the security model.
 
 Worklog behavior (timezone and directory paths) is configured **entirely through environment variables**, not command-line flags — see [Environment configuration](#environment-configuration).
 
@@ -212,6 +216,8 @@ Built on [cobra](https://github.com/spf13/cobra) with [fang](https://github.com/
 | Flag | Description |
 |---|---|
 | `-h`, `--help` | Show usage and exit. |
+| `--http <addr>[,...]` | Serve MCP over Streamable HTTP on one or more addresses instead of stdio; repeat the flag or comma-separate them (e.g. `127.0.0.1:8787,192.168.1.10:8787`). Defaults to `OBSITRACE_HTTP_ADDR` when set. |
+| `--auth-token <token>` | Bearer token every `--http` request must present. Required for non-loopback addresses. Defaults to `OBSITRACE_AUTH_TOKEN`. |
 | `--version` | Print the version and exit. Versions come from `-ldflags "-X main.version=..."` at build time, or fall back to the module/git build info; untagged builds report `dev`. |
 
 Tab completions and manpage generation are explicitly disabled in this build.
@@ -223,6 +229,7 @@ Tab completions and manpage generation are explicitly disabled in this build.
 - **Path traversal prevention** — All paths validated to stay within vault boundaries
 - **Confirmation required** — Destructive operations require explicit confirmation
 - **Worklog confinement** — Worklog tools only touch the configured index/task/log/summary paths and generate paths server-side
+- **Opt-in network exposure** — stdio remains the default; `--http` requires a bearer token for any non-loopback address and the server refuses to start otherwise. See [docs/02remote-access.md](docs/02remote-access.md).
 
 ## Development
 

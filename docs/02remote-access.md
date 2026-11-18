@@ -62,7 +62,7 @@ Field names vary by client; the shape is:
   "mcpServers": {
     "obsitrace": {
       "type": "http",
-      "url": "http://127.0.0.1:8787",
+      "url": "http://127.0.0.1:8787/mcp",
       "headers": {
         "Authorization": "Bearer <token>"
       }
@@ -124,9 +124,9 @@ The client URL becomes `https://vault.example.com/mcp`.
 
 Notes:
 
-- The server ignores the request path, so `location /mcp` works with or without
-  a trailing slash on `proxy_pass`. Keep the proxy on 127.0.0.1 so the only
-  public entry point is nginx.
+- MCP is served at `/mcp`; the bare `/` still answers for compatibility, so
+  `location /mcp` works with or without a trailing slash on `proxy_pass`. Keep
+  the proxy on 127.0.0.1 so the only public entry point is nginx.
 - If a client insists on a streaming `GET` endpoint, run without `--http`'s
   stateless mode — that requires a code change, not an nginx one.
 - Do not add `proxy_set_header Host 127.0.0.1:8787`. It is unnecessary with a

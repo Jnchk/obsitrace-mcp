@@ -126,8 +126,9 @@ func newHTTPHandler(server *mcp.Server, token string, store *staging.Store) http
 
 	mux := http.NewServeMux()
 	mux.Handle("/upload", uploadHandler(store))
-	// The MCP handler stays on "/" so existing clients that point at the root
-	// keep working; ServeMux prefers the longer /upload prefix.
+	// /mcp is the canonical endpoint; "/" stays an alias so clients and reverse
+	// proxies configured with the bare address keep working.
+	mux.Handle("/mcp", mcpHandler)
 	mux.Handle("/", mcpHandler)
 
 	if token == "" {

@@ -205,7 +205,7 @@ obsitrace-mcp
 
 Once started, the server communicates over **stdio** by default. Point your MCP client at the binary and pass the vault path via `args` (see the [MCP configuration](#environment-configuration) example above).
 
-For clients that connect over the network, pass `--http <addr>[,...]` to serve MCP over Streamable HTTP instead. Use `--auth-token` (or `OBSITRACE_AUTH_TOKEN`) for any address that is not loopback. See [docs/02remote-access.md](docs/02remote-access.md) for client configuration, the nginx TLS setup, and the security model.
+For clients that connect over the network, pass `--http <addr>[,...]` to serve MCP over Streamable HTTP instead. MCP is served at `/mcp` on every address (`/` is kept as an alias for older clients). Use `--auth-token` (or `OBSITRACE_AUTH_TOKEN`) for any address that is not loopback. See [docs/02remote-access.md](docs/02remote-access.md) for client configuration, the nginx TLS setup, and the security model.
 
 Worklog behavior (timezone and directory paths) is configured **entirely through environment variables**, not command-line flags — see [Environment configuration](#environment-configuration).
 
@@ -216,7 +216,7 @@ Built on [cobra](https://github.com/spf13/cobra) with [fang](https://github.com/
 | Flag | Description |
 |---|---|
 | `-h`, `--help` | Show usage and exit. |
-| `--http <addr>[,...]` | Serve MCP over Streamable HTTP on one or more addresses instead of stdio; repeat the flag or comma-separate them (e.g. `127.0.0.1:8787,192.168.1.10:8787`). Defaults to `OBSITRACE_HTTP_ADDR` when set. |
+| `--http <addr>[,...]` | Serve MCP over Streamable HTTP on one or more addresses instead of stdio; repeat the flag or comma-separate them (e.g. `127.0.0.1:8787,192.168.1.10:8787`). MCP listens at `/mcp`; uploads at `POST /upload`. Defaults to `OBSITRACE_HTTP_ADDR` when set. |
 | `--auth-token <token>` | Bearer token every `--http` request must present. Required for non-loopback addresses. Defaults to `OBSITRACE_AUTH_TOKEN`. |
 | `--version` | Print the version and exit. Versions come from `-ldflags "-X main.version=..."` at build time, or fall back to the module/git build info; untagged builds report `dev`. |
 

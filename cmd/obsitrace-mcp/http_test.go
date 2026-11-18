@@ -168,22 +168,26 @@ func TestUploadRoute(t *testing.T) {
 	}
 }
 
-func TestMCPStillServedAtRoot(t *testing.T) {
+func TestMCPPaths(t *testing.T) {
 	store, _ := staging.New(t.TempDir(), time.Minute, 1<<20)
 	server := mcp.NewServer(&mcp.Implementation{Name: "t", Version: "t"}, nil)
 	ts := httptest.NewServer(newHTTPHandler(server, "secret", store))
 	defer ts.Close()
 
-	req, _ := http.NewRequest(http.MethodPost, ts.URL, strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}`))
-	req.Header.Set("Authorization", "Bearer secret")
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json, text/event-stream")
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer res.Body.Close()
-	if res.StatusCode != http.StatusOK {
-		t.Fatalf("status = %d", res.StatusCode)
+	// /mcp is canonical; "" is the compatibility alias kept for old clients.
+	for _, path := range []string{"/mcp", ""} {
+		req, _ := http.NewRequest(http.MethodPost, ts.URL+path, strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}`))
+		req.Header.Set("Authorization", "Bearer secret")
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Accept", "application/json, text/event-stream")
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, _ := io.ReadAll(res.Body)
+		res.Body.Close()
+		if res.StatusCode != http.StatusOK || !strings.Contains(string(body), `"serverInfo"`) {
+			t.Fatalf("%q status = %d body = %s", path, res.StatusCode, body)
+		}
 	}
 }

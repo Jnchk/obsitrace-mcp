@@ -11,7 +11,8 @@ stage the file through the gateway and pass the returned id; only the id crosses
 ## Two steps
 
 ```bash
-python3 ~/.config/opencode/skills/mcp-upload/scripts/mcp_upload.py --server obsitrace --path ./report.md
+# run from the root of your mcp-gateway clone
+python3 skills/mcp-upload/scripts/mcp_upload.py --server obsitrace --path ./report.md
 # 9f1c0b7a4e2d4c3b8a5f6e7d0c1b2a39
 ```
 

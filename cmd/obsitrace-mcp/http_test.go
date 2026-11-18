@@ -1,13 +1,17 @@
 package main
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/Jnchk/obsitrace-mcp/internal/staging"
 )
 
 func TestValidateHTTPConfig(t *testing.T) {
@@ -65,7 +69,7 @@ func TestValidateHTTPAddrs(t *testing.T) {
 
 func TestHTTPHandlerRequiresBearerToken(t *testing.T) {
 	server := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "test"}, nil)
-	ts := httptest.NewServer(newHTTPHandler(server, "secret"))
+	ts := httptest.NewServer(newHTTPHandler(server, "secret", nil))
 	defer ts.Close()
 
 	const body = `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}`
@@ -106,5 +110,80 @@ func TestHTTPHandlerRequiresBearerToken(t *testing.T) {
 	}
 	if !strings.Contains(got, `"serverInfo"`) {
 		t.Fatalf("initialize response missing serverInfo: %s", got)
+	}
+}
+
+func TestUploadRoute(t *testing.T) {
+	store, err := staging.New(t.TempDir(), time.Minute, 1<<20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := mcp.NewServer(&mcp.Implementation{Name: "t", Version: "t"}, nil)
+	h := newHTTPHandler(server, "secret", store)
+
+	// Without the bearer token the route is closed.
+	req := httptest.NewRequest(http.MethodPost, "/upload?filename=x.md", strings.NewReader("body"))
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("no token status = %d", rec.Code)
+	}
+
+	// Missing filename.
+	req = httptest.NewRequest(http.MethodPost, "/upload", strings.NewReader("body"))
+	req.Header.Set("Authorization", "Bearer secret")
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("missing filename status = %d", rec.Code)
+	}
+
+	// Success returns the id that write consumes.
+	req = httptest.NewRequest(http.MethodPost, "/upload?filename=doc.md", strings.NewReader("# 标题\n\n正文"))
+	req.Header.Set("Authorization", "Bearer secret")
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d body=%s", rec.Code, rec.Body.String())
+	}
+	var info staging.Info
+	if err := json.Unmarshal(rec.Body.Bytes(), &info); err != nil {
+		t.Fatal(err)
+	}
+	if info.ID == "" || info.Filename != "doc.md" {
+		t.Fatalf("info = %#v", info)
+	}
+	data, err := store.Read(info.ID)
+	if err != nil || string(data) != "# 标题\n\n正文" {
+		t.Fatalf("staged = %q err=%v", data, err)
+	}
+
+	// Binary bodies are rejected.
+	req = httptest.NewRequest(http.MethodPost, "/upload?filename=x.md", strings.NewReader("\xff\xfe"))
+	req.Header.Set("Authorization", "Bearer secret")
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("binary status = %d", rec.Code)
+	}
+}
+
+func TestMCPStillServedAtRoot(t *testing.T) {
+	store, _ := staging.New(t.TempDir(), time.Minute, 1<<20)
+	server := mcp.NewServer(&mcp.Implementation{Name: "t", Version: "t"}, nil)
+	ts := httptest.NewServer(newHTTPHandler(server, "secret", store))
+	defer ts.Close()
+
+	req, _ := http.NewRequest(http.MethodPost, ts.URL, strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}`))
+	req.Header.Set("Authorization", "Bearer secret")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d", res.StatusCode)
 	}
 }

@@ -12,8 +12,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/Jnchk/obsitrace-mcp/internal/types"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 func handleRead(ctx context.Context, req *mcp.CallToolRequest, input ReadInput) (*mcp.CallToolResult, ReadOutput, error) {
@@ -63,14 +63,40 @@ func handleRead(ctx context.Context, req *mcp.CallToolRequest, input ReadInput) 
 
 func handleWrite(ctx context.Context, req *mcp.CallToolRequest, input WriteInput) (*mcp.CallToolResult, WriteOutput, error) {
 	path := strings.TrimSpace(input.Path)
+	content := input.Content
+	uploadID := strings.TrimSpace(input.ContentUploadID)
+
+	if uploadID != "" {
+		if content != "" {
+			return &mcp.CallToolResult{IsError: true}, WriteOutput{Success: false, Path: path},
+				fmt.Errorf("give either content or contentUploadId, not both")
+		}
+		if stagingStore == nil {
+			return &mcp.CallToolResult{IsError: true}, WriteOutput{Success: false, Path: path},
+				fmt.Errorf("contentUploadId is not available in this mode")
+		}
+		data, err := stagingStore.Read(uploadID)
+		if err != nil {
+			return &mcp.CallToolResult{IsError: true}, WriteOutput{Success: false, Path: path},
+				fmt.Errorf("contentUploadId %s: %w", uploadID, err)
+		}
+		content = string(data)
+	} else if content == "" {
+		return &mcp.CallToolResult{IsError: true}, WriteOutput{Success: false, Path: path},
+			fmt.Errorf("content or contentUploadId is required")
+	}
+
 	err := fileSystem.WriteNote(types.NoteWriteParams{
 		Path:        path,
-		Content:     input.Content,
+		Content:     content,
 		Frontmatter: input.Frontmatter,
 		Mode:        "overwrite",
 	})
 	if err != nil {
 		return &mcp.CallToolResult{IsError: true}, WriteOutput{Success: false, Path: path}, err
+	}
+	if uploadID != "" {
+		_ = stagingStore.Delete(uploadID) // consumed only after a successful write
 	}
 
 	return nil, WriteOutput{Success: true, Path: path}, nil

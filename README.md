@@ -241,6 +241,19 @@ go vet ./...          # Lint
 
 Design documentation lives in [docs/](docs/): [00requirement.md](docs/00requirement.md) (requirements) and [01design.md](docs/01design.md) (design & tool schemas).
 
+## Large documents (staging upload)
+
+`write` accepts `contentUploadId` instead of inline `content`, so a document body never travels through
+the model context:
+
+1. `POST /upload?filename=report.md` with the same bearer token as MCP and
+   `Content-Type: application/octet-stream`; the response is `{"id": "...", "size": ..., "sha256": ...}`.
+2. Call `write` with `{"path": "Inbox/report.md", "contentUploadId": "<id>"}`.
+
+The id is single-use, valid for `--upload-ttl` (15m default), bounded by `--max-upload` (10 MiB), accepts
+valid UTF-8 text only, and is consumed only when the write succeeds. The neutral `mcp-upload` helper in the
+`mcp-gateway` repository performs step 1 for any upstream that implements this route.
+
 ## License
 
 [0BSD](LICENSE) — same as the upstream project.

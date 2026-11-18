@@ -2,14 +2,18 @@ package main
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/Jnchk/obsitrace-mcp/internal/filesystem"
 	"github.com/Jnchk/obsitrace-mcp/internal/frontmatter"
 	"github.com/Jnchk/obsitrace-mcp/internal/pathfilter"
+	"github.com/Jnchk/obsitrace-mcp/internal/staging"
 )
 
 func setupTestVault(t *testing.T) string {
@@ -156,5 +160,78 @@ func TestHandleTagsCountsTaggedNotes(t *testing.T) {
 
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("handleTags() = %#v, want %#v", got, want)
+	}
+}
+
+func setupStaging(t *testing.T) *staging.Store {
+	t.Helper()
+	store, err := staging.New(t.TempDir(), time.Minute, 1<<20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stagingStore = store
+	return store
+}
+
+func TestHandleWriteFromUpload(t *testing.T) {
+	vault := setupTestVault(t)
+	store := setupStaging(t)
+
+	info, err := store.Stage(strings.NewReader("# 上传的标题\n\n正文内容\n"), "doc.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, out, err := handleWrite(context.Background(), nil, WriteInput{
+		Path:            "Inbox/uploaded.md",
+		ContentUploadID: info.ID,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !out.Success {
+		t.Fatalf("output = %#v", out)
+	}
+
+	got, err := os.ReadFile(filepath.Join(vault, "Inbox", "uploaded.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "# 上传的标题\n\n正文内容\n" {
+		t.Fatalf("content = %q", got)
+	}
+
+	// The id is consumed after a successful write.
+	if _, err := store.Read(info.ID); !errors.Is(err, staging.ErrNotFound) {
+		t.Fatalf("id still readable: %v", err)
+	}
+}
+
+func TestHandleWriteUploadValidation(t *testing.T) {
+	setupTestVault(t)
+	store := setupStaging(t)
+	info, err := store.Stage(strings.NewReader("body"), "doc.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, _, err := handleWrite(context.Background(), nil, WriteInput{
+		Path: "a.md", Content: "inline", ContentUploadID: info.ID,
+	}); err == nil {
+		t.Fatal("expected an error when both content and id are set")
+	}
+
+	if _, _, err := handleWrite(context.Background(), nil, WriteInput{Path: "a.md"}); err == nil {
+		t.Fatal("expected an error when neither is set")
+	}
+
+	// A failing write keeps the id so the caller can retry.
+	if _, _, err := handleWrite(context.Background(), nil, WriteInput{
+		Path: "../escape.md", ContentUploadID: info.ID,
+	}); err == nil {
+		t.Fatal("expected the path filter to reject ..")
+	}
+	if _, err := store.Read(info.ID); err != nil {
+		t.Fatalf("id was consumed by a failed write: %v", err)
 	}
 }

@@ -18,11 +18,13 @@ type (
 		Truncated   bool           `json:"truncated,omitempty"`
 	}
 
-	// WriteInput contains parameters for writing a note.
+	// WriteInput contains parameters for writing a note. Exactly one of
+	// Content or ContentUploadID must be set.
 	WriteInput struct {
-		Path        string         `json:"path" jsonschema:"Path to the note relative to vault root"`
-		Content     string         `json:"content" jsonschema:"Content of the note"`
-		Frontmatter map[string]any `json:"frontmatter,omitempty" jsonschema:"Frontmatter object (optional)"`
+		Path            string         `json:"path" jsonschema:"Path to the note relative to vault root"`
+		Content         string         `json:"content,omitempty" jsonschema:"Content of the note; required unless contentUploadId is set"`
+		ContentUploadID string         `json:"contentUploadId,omitempty" jsonschema:"id returned by POST /upload; use instead of content for large documents"`
+		Frontmatter     map[string]any `json:"frontmatter,omitempty" jsonschema:"Frontmatter object (optional)"`
 	}
 
 	// WriteOutput contains the result of writing a note.
@@ -160,7 +162,7 @@ func registerTools(server *mcp.Server) {
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "write",
-		Description: "Create or overwrite a note in the vault with the given content and optional frontmatter.",
+		Description: "Create or overwrite a note with inline content or a staged upload id (contentUploadId), plus optional frontmatter. Prefer contentUploadId for large documents.",
 	}, handleWrite)
 
 	mcp.AddTool(server, &mcp.Tool{

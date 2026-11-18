@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/Jnchk/obsitrace-mcp/internal/filesystem"
 	"github.com/Jnchk/obsitrace-mcp/internal/frontmatter"
 	"github.com/Jnchk/obsitrace-mcp/internal/pathfilter"
 	"github.com/Jnchk/obsitrace-mcp/internal/search"
+	"github.com/Jnchk/obsitrace-mcp/internal/staging"
 	"github.com/Jnchk/obsitrace-mcp/internal/worklog"
 	"github.com/charmbracelet/fang"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -21,9 +23,12 @@ var (
 	fileSystem     *filesystem.Service
 	searchService  *search.Service
 	worklogService *worklog.Service
+	stagingStore   *staging.Store
 
 	httpAddrs []string
 	authToken string
+	maxUpload int64
+	uploadTTL time.Duration
 )
 
 func main() {
@@ -44,6 +49,10 @@ boundaries.`,
 		"serve MCP over Streamable HTTP on one or more addresses instead of stdio (repeat the flag or comma-separate, e.g. 127.0.0.1:8787,192.168.1.10:8787)")
 	cmd.Flags().StringVar(&authToken, "auth-token", os.Getenv("OBSITRACE_AUTH_TOKEN"),
 		"bearer token required by --http (mandatory for non-loopback addresses)")
+	cmd.Flags().Int64Var(&maxUpload, "max-upload", 10<<20,
+		"maximum size in bytes for POST /upload (default 10 MiB)")
+	cmd.Flags().DurationVar(&uploadTTL, "upload-ttl", 15*time.Minute,
+		"how long an upload id stays valid before write consumes it")
 
 	if err := fang.Execute(
 		context.Background(),
@@ -85,6 +94,11 @@ func runServer(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("initialize worklog service: %w", err)
 	}
 
+	stagingStore, err = staging.New("", uploadTTL, maxUpload)
+	if err != nil {
+		return fmt.Errorf("initialize staging store: %w", err)
+	}
+
 	// Create MCP server
 	server := mcp.NewServer(&mcp.Implementation{
 		Name:    "obsitrace-mcp",
@@ -95,7 +109,7 @@ func runServer(cmd *cobra.Command, args []string) error {
 
 	addrs := normalizeAddrs(httpAddrs)
 	if len(addrs) > 0 {
-		return runHTTP(server, addrs, authToken)
+		return runHTTP(server, addrs, authToken, stagingStore)
 	}
 
 	if err := server.Run(cmd.Context(), &mcp.StdioTransport{}); err != nil {

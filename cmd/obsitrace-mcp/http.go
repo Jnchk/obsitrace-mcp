@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/subtle"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -12,16 +13,18 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/auth"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/Jnchk/obsitrace-mcp/internal/staging"
 )
 
 // runHTTP serves the MCP server over Streamable HTTP on every address until the
 // process exits.
-func runHTTP(server *mcp.Server, addrs []string, token string) error {
+func runHTTP(server *mcp.Server, addrs []string, token string, store *staging.Store) error {
 	if err := validateHTTPAddrs(addrs, token); err != nil {
 		return err
 	}
 
-	handler := newHTTPHandler(server, token)
+	handler := newHTTPHandler(server, token, store)
 	servers := make([]*http.Server, 0, len(addrs))
 	errCh := make(chan error, len(addrs))
 	for _, addr := range addrs {
@@ -105,11 +108,11 @@ func isLoopbackAddr(addr string) bool {
 	return ip != nil && ip.IsLoopback()
 }
 
-// newHTTPHandler builds the Streamable HTTP handler, optionally wrapped in
+// newHTTPHandler builds the MCP and upload handlers, optionally wrapped in
 // bearer authentication.
-func newHTTPHandler(server *mcp.Server, token string) http.Handler {
+func newHTTPHandler(server *mcp.Server, token string, store *staging.Store) http.Handler {
 	token = strings.TrimSpace(token)
-	handler := mcp.NewStreamableHTTPHandler(
+	mcpHandler := mcp.NewStreamableHTTPHandler(
 		func(*http.Request) *mcp.Server { return server },
 		&mcp.StreamableHTTPOptions{
 			Stateless:    true,
@@ -120,8 +123,15 @@ func newHTTPHandler(server *mcp.Server, token string) http.Handler {
 			DisableLocalhostProtection: token != "",
 		},
 	)
+
+	mux := http.NewServeMux()
+	mux.Handle("/upload", uploadHandler(store))
+	// The MCP handler stays on "/" so existing clients that point at the root
+	// keep working; ServeMux prefers the longer /upload prefix.
+	mux.Handle("/", mcpHandler)
+
 	if token == "" {
-		return handler
+		return mux
 	}
 
 	verifier := func(_ context.Context, got string, _ *http.Request) (*auth.TokenInfo, error) {
@@ -132,5 +142,39 @@ func newHTTPHandler(server *mcp.Server, token string) http.Handler {
 	}
 	return auth.RequireBearerToken(verifier, &auth.RequireBearerTokenOptions{
 		AllowMissingExpiration: true, // static token, no exp claim
-	})(handler)
+	})(mux)
+}
+
+// uploadHandler stages a file body under an id that write can consume.
+func uploadHandler(store *staging.Store) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		if store == nil {
+			http.Error(w, "uploads are disabled", http.StatusServiceUnavailable)
+			return
+		}
+		filename := r.URL.Query().Get("filename")
+		if filename == "" {
+			http.Error(w, "filename is required", http.StatusBadRequest)
+			return
+		}
+		info, err := store.Stage(r.Body, filename)
+		switch {
+		case errors.Is(err, staging.ErrTooLarge):
+			http.Error(w, err.Error(), http.StatusRequestEntityTooLarge)
+			return
+		case errors.Is(err, staging.ErrEmpty), errors.Is(err, staging.ErrNotText):
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		case err != nil:
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_ = json.NewEncoder(w).Encode(info)
+	})
 }
